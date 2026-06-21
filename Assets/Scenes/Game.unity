@@ -156,7 +156,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: -192, y: 24}
+  m_AnchoredPosition: {x: -192, y: 15.9}
   m_SizeDelta: {x: 160, y: 95.2}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &11403072
@@ -2101,7 +2101,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: -194.5, y: 66}
+  m_AnchoredPosition: {x: -194.5, y: 48.1}
   m_SizeDelta: {x: 160, y: 95.2}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &1167533441
@@ -2279,6 +2279,8 @@ MonoBehaviour:
   level_text: {fileID: 0}
   time_text: {fileID: 0}
   background_music: {fileID: 0}
+  skipMoveDuration: 0.45
+  skipDistanceScale: 0.1667
   m_state: 0
   levelId: 0
 --- !u!4 &1307822951
