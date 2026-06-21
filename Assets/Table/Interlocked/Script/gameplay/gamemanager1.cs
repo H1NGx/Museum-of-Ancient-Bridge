@@ -28,7 +28,11 @@ public class gamemanager1 : MonoBehaviour
     public AudioClip background_music = null;
     private bool isMusicPlaying = false;
     private GameObject levelSelectPanel;
+    private Button skipButton;
+    private bool isSkipping;
 
+    [SerializeField] private float skipMoveDuration = 0.45f;
+    [SerializeField] private float skipDistanceScale = 0.1667f;
 
     public enum STATE
     {
@@ -127,7 +131,8 @@ public class gamemanager1 : MonoBehaviour
 
         GameObject.Find("PanseBtn").GetComponent<Button>().onClick.AddListener(() => { OnPauseBtn(); });
         GameObject.Find("AudioBtn").GetComponent<Button>().onClick.AddListener(() => { OnAudioBtn(); });
-        GameObject.Find("AboutBtn").GetComponent<Button>().onClick.AddListener(() => { OnSkipBtn(); });
+        skipButton = GameObject.Find("AboutBtn").GetComponent<Button>();
+        skipButton.onClick.AddListener(() => { OnSkipBtn(); });
     }
 
     private void destroyAll()
@@ -178,7 +183,6 @@ public class gamemanager1 : MonoBehaviour
         // partitial counter
         while ((line = model.ReadLine()) != null)
         {
-            System.Console.WriteLine(line);
             string[] nums = line.Split(' ');
             int allNum = nums.Length;
             if (allNum % 3 == 0)
@@ -205,6 +209,8 @@ public class gamemanager1 : MonoBehaviour
                     GameObject derived = GameObject.CreatePrimitive(PrimitiveType.Cube);
                     derived.GetComponent<Renderer>().material = Resources.Load("pic/" + Convert.ToString(counter)) as Material;
                     derived.transform.position = new Vector3(Int32.Parse(nums[i * 3]), Int32.Parse(nums[i * 3 + 1]), Int32.Parse(nums[i * 3 + 2]));
+                    derived.GetComponent<Collider>().material.dynamicFriction = 0;
+                    derived.GetComponent<Collider>().material.staticFriction = 0;
                     derived.transform.parent = obj.transform;
                 }
                 if (levelId == 2)
@@ -712,11 +718,13 @@ public class gamemanager1 : MonoBehaviour
 
     void OnSkipBtn()
     {
-
+        if (isSkipping)
+        {
+            return;
+        }
 
         SwitchState(STATE.About);
         Cursor.lockState = CursorLockMode.Locked;
-        // Init();
         String para = Path.Combine(Application.dataPath, "Table", "Interlocked", "Script", "solutions", "solution" + levelId + ".wood");
         if (!File.Exists(para))
         {
@@ -726,85 +734,133 @@ public class gamemanager1 : MonoBehaviour
             return;
         }
 
-        StreamReader solution = new StreamReader(para);
-
         destroyAll();
         buildAll();
+        StartCoroutine(PlaySkipSolution(para));
+    }
 
-        string names = solution.ReadLine();//读取第一行数据，第一行为块的编号
-
-        string action;
-        float sleep = 0;
-        int counter = 0;
-
-        string[] name = names.Split(' ');
-        List<GameObject> part = new List<GameObject>();
-        for (int i = 0; i < name.Length; i++)
+    private IEnumerator PlaySkipSolution(string solutionPath)
+    {
+        isSkipping = true;
+        if (skipButton != null)
         {
-            part.Add(GameObject.Find("part" + name[i]));
-
-        }
-        //整体向后移一段距离
-        for (int i = 0; i < part.Count; i++)
-        {
-            part[i].transform.Translate(new Vector3(0, 0, 50) * Time.deltaTime * 10);
+            skipButton.interactable = false;
         }
 
-        while ((action = solution.ReadLine()) != null)
+        string[] lines = File.ReadAllLines(solutionPath);
+        if (lines.Length == 0)
         {
-            System.Console.WriteLine(action);
+            FinishSkipPlayback(false);
+            yield break;
+        }
 
-            // Debug.Log(action);
-            String[] act = action.Split(' ');
-            for (int i = 0; i < act.Length; i++)
-                Debug.Log(int.Parse(act[i]));
+        string[] names = lines[0].Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        List<GameObject> parts = new List<GameObject>(names.Length);
+        for (int i = 0; i < names.Length; i++)
+        {
+            parts.Add(GameObject.Find("part" + names[i]));
+        }
 
-            int length = act.Length;//数组长度
-            Debug.Log(length);
+        Vector3 initialOffset = new Vector3(0f, 0f, 50f) * skipDistanceScale;
+        for (int i = 0; i < parts.Count; i++)
+        {
+            if (parts[i] != null)
+            {
+                parts[i].transform.position += initialOffset;
+            }
+        }
+
+        float elapsed = 0f;
+        for (int i = 1; i < lines.Length; i++)
+        {
+            string line = lines[i];
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            string[] act = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            int length = act.Length;
+            if (length != 5 && length != 2)
+            {
+                continue;
+            }
+
+            float actionTime = float.Parse(act[length - 1]);
+            float waitTime = Mathf.Max(0f, actionTime - elapsed);
+            if (waitTime > 0f)
+            {
+                yield return new WaitForSeconds(waitTime);
+                elapsed = actionTime;
+            }
+
+            int partIndex = int.Parse(act[0]) - 1;
+            if (partIndex < 0 || partIndex >= parts.Count || parts[partIndex] == null)
+            {
+                continue;
+            }
 
             if (length == 5)
             {
-                //part[int.Parse(act[0])-1].transform.Translate(new Vector3(int.Parse(act[1]), int.Parse(act[2]), int.Parse(act[3])) * Time.deltaTime * 10);
                 int a = int.Parse(act[1]);
                 int b = int.Parse(act[2]);
                 int c = int.Parse(act[3]);
-                float t = float.Parse(act[4]);
-                if (a != 0) counter = a;
-                else if (b != 0) counter = b;
-                else if (c != 0) counter = c;
-
-
-                StartCoroutine(DelayToInvokeDo(() =>
-                {
-                    part[int.Parse(act[0]) - 1].transform.Translate(new Vector3(a, b, c) * Time.deltaTime * 10);
-                }, t));
-
-
+                Vector3 offset = new Vector3(a, b, c) * skipDistanceScale;
+                yield return MovePartSmoothly(parts[partIndex].transform, offset);
+                elapsed += skipMoveDuration;
             }
             else if (length == 2)
             {
-
-                sleep = float.Parse(act[1]);
-                StartCoroutine(DelayToInvokeDo(() =>
-                {
-                    Destroy(part[int.Parse(act[0]) - 1]);
-                }, float.Parse(act[1])));
-
+                Destroy(parts[partIndex]);
             }
-
-
-
         }
-        solution.Close();
-        StartCoroutine(DelayToInvokeDo(() =>
-        {
 
-            Cursor.lockState = CursorLockMode.None;
+        FinishSkipPlayback(true);
+    }
+
+    private IEnumerator MovePartSmoothly(Transform target, Vector3 offset)
+    {
+        if (target == null)
+        {
+            yield break;
+        }
+
+        Vector3 start = target.position;
+        Vector3 end = start + offset;
+        float duration = Mathf.Max(0.01f, skipMoveDuration);
+        float elapsed = 0f;
+        while (elapsed < duration && target != null)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            target.position = Vector3.LerpUnclamped(start, end, Mathf.SmoothStep(0f, 1f, t));
+            yield return null;
+        }
+
+        if (target != null)
+        {
+            target.position = end;
+        }
+    }
+
+    private void FinishSkipPlayback(bool showResult)
+    {
+        isSkipping = false;
+        Cursor.lockState = CursorLockMode.None;
+        if (skipButton != null)
+        {
+            skipButton.interactable = true;
+        }
+
+        if (showResult)
+        {
             SwitchState(STATE.Result);
             resultPanel.MatchResult(false);
-        }, sleep));
-
-
+        }
+        else
+        {
+            SwitchState(STATE.Normal);
+        }
     }
 
     public IEnumerator DelayToInvokeDo(Action action, float delaySeconds)
