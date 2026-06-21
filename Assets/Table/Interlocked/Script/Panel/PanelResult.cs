@@ -69,17 +69,24 @@ public class PanelResult : MonoBehaviour {
             
             PlayerPrefs.SetInt(level_key,gameMgr.levelId+1);  //保存当前解锁的关卡编号,实际是当前关卡的下一关
          //   print(gamemanager1.step_text.text+" "+gameMgr.time_text.text);
-            string step = gamemanager1.step_text.text;
             string time = gameMgr.time_text.text;
             int minte = int.Parse(time.Substring(0, 2));
-              int second = int.Parse(time.Substring(5,2));
+            int second = int.Parse(time.Substring(5,2));
+            int currentSeconds = minte * 60 + second;
             string r_time = PlayerPrefs.GetString(level_key+ gameMgr.levelId + "time");
             int r_minte = int.Parse(r_time.Substring(0, 2));
             int r_second = int.Parse(r_time.Substring(5, 2));
-            if (minte<r_minte||second<r_second)
-            PlayerPrefs.SetString(level_key+ gameMgr.levelId + "time",time);
-            if (PlayerPrefs.GetInt(level_key+ gameMgr.levelId + "step") > int.Parse(step.Substring(0, step.Length - 3)))
-            PlayerPrefs.SetInt(level_key+ gameMgr.levelId + "step", int.Parse(step.Substring(0,step.Length - 3)));
+            int recordSeconds = r_minte * 60 + r_second;
+            if (currentSeconds < recordSeconds)
+            {
+                PlayerPrefs.SetString(level_key+ gameMgr.levelId + "time",time);
+            }
+
+            int recordStep = PlayerPrefs.GetInt(level_key+ gameMgr.levelId + "step");
+            if (recordStep <= 0 || recordStep > gamemanager1.steps)
+            {
+                PlayerPrefs.SetInt(level_key+ gameMgr.levelId + "step", gamemanager1.steps);
+            }
          
 
 
