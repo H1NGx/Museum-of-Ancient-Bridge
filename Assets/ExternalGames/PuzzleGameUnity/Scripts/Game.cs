@@ -88,6 +88,12 @@ public class Game : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            SceneManager.LoadScene("SampleScene");
+            return;
+        }
+
         switch (gameState)
         {
             case GameState.Start:
@@ -126,12 +132,12 @@ public class Game : MonoBehaviour
         switch (gameState)
         {
             case GameState.Start:
-                GUI.Label(new Rect(0, 0, 100, 100), "Tap to start!");
+                GUI.Label(new Rect(0, 0, 100, 100), "点击开始游戏，按下esc退出");
                 break;
             case GameState.Playing:
                 break;
             case GameState.End:
-                GUI.Label(new Rect(0, 0, 100, 100), "Congrats, tap to start over!");
+                GUI.Label(new Rect(0, 0, 100, 100), "恭喜，点击重新开始游戏！");
                 break;
             default:
                 break;
